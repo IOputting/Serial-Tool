@@ -1,0 +1,49 @@
+name: Release
+on:
+  push:
+    tags:
+      - 'v*' # 当你推送以 'v' 开头的 tag 时触发（例如 v1.0.0）
+
+jobs:
+  release:
+    permissions:
+      contents: write # 允许创建 Release
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macos-latest, ubuntu-22.04, windows-latest]
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      # Linux 系统需要安装 Tauri 特定的系统依赖
+      - name: install dependencies (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      # 安装前端依赖（根据你的包管理器调整：npm/yarn/pnpm）
+      - name: install frontend dependencies
+        run: npm install
+
+      # 使用 Tauri 官方 Action 编译并发布
+      - name: build tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }} # 使用触发工作流的 tag 名称
+          releaseName: 'Serial Tool ${{ github.ref_name }}'
+          releaseBody: '自动编译发布的版本。请在下方下载对应系统的安装包。'
+          releaseDraft: false
+          prerelease: false
