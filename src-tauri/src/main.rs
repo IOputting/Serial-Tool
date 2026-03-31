@@ -11,7 +11,6 @@ struct PortState {
     serial_writer: Arc<Mutex<Option<Box<dyn serialport::SerialPort>>>>,
 }
 
-// 💡 新增：包含设备名称的端口信息结构体
 #[derive(serde::Serialize)]
 struct PortInfo {
     name: String,
@@ -25,7 +24,6 @@ fn get_available_ports() -> Vec<PortInfo> {
         .into_iter()
         .map(|p| {
             let mut desc = p.port_name.clone();
-            // 💡 尝试提取 USB 设备的产品名称或制造商（如 CH340, ST-Link）
             if let serialport::SerialPortType::UsbPort(usb_info) = p.port_type {
                 if let Some(product) = usb_info.product {
                     desc = format!("{} ({})", p.port_name, product);
@@ -38,22 +36,61 @@ fn get_available_ports() -> Vec<PortInfo> {
         .collect()
 }
 
+// 辅助函数：转换数据位
+fn map_data_bits(bits: u8) -> serialport::DataBits {
+    match bits {
+        5 => serialport::DataBits::Five,
+        6 => serialport::DataBits::Six,
+        7 => serialport::DataBits::Seven,
+        _ => serialport::DataBits::Eight,
+    }
+}
+
+// 辅助函数：转换校验位
+fn map_parity(parity: &str) -> serialport::Parity {
+    match parity {
+        "Odd" => serialport::Parity::Odd,
+        "Even" => serialport::Parity::Even,
+        _ => serialport::Parity::None,
+    }
+}
+
+// 辅助函数：转换停止位
+fn map_stop_bits(bits: u8) -> serialport::StopBits {
+    match bits {
+        2 => serialport::StopBits::Two,
+        _ => serialport::StopBits::One,
+    }
+}
+
 #[tauri::command]
 fn connect_port(
     app_handle: tauri::AppHandle,
     state: State<'_, PortState>,
     port_name: String,
     baud_rate: u32,
+    data_bits: u8,
+    parity: String,
+    stop_bits: u8,
+    dtr: bool,
+    rts: bool,
 ) -> Result<(), String> {
     state.should_read.store(false, Ordering::Relaxed);
     thread::sleep(Duration::from_millis(50));
 
     let port = serialport::new(&port_name, baud_rate)
+        .data_bits(map_data_bits(data_bits))
+        .parity(map_parity(&parity))
+        .stop_bits(map_stop_bits(stop_bits))
         .timeout(Duration::from_millis(50))
         .open();
 
     match port {
         Ok(mut serial) => {
+            // 初始化 DTR 和 RTS 状态 (部分设备可能不支持，忽略错误)
+            let _ = serial.write_data_terminal_ready(dtr);
+            let _ = serial.write_request_to_send(rts);
+
             let writer = serial.try_clone().map_err(|e| format!("克隆串口句柄失败: {}", e))?;
             let mut state_writer = state.serial_writer.lock().unwrap();
             *state_writer = Some(writer);
@@ -81,6 +118,19 @@ fn connect_port(
             Ok(())
         }
         Err(e) => Err(format!("无法打开串口: {}", e)),
+    }
+}
+
+// 💡 新增：动态修改 DTR 和 RTS
+#[tauri::command]
+fn set_dtr_rts(state: State<'_, PortState>, dtr: bool, rts: bool) -> Result<(), String> {
+    let mut writer_guard = state.serial_writer.lock().unwrap();
+    if let Some(writer) = writer_guard.as_mut() {
+        let _ = writer.write_data_terminal_ready(dtr);
+        let _ = writer.write_request_to_send(rts);
+        Ok(())
+    } else {
+        Err("串口未连接".to_string())
     }
 }
 
@@ -118,18 +168,16 @@ fn send_data(state: State<'_, PortState>, data: String, is_hex: bool) -> Result<
     }
 }
 
-// ... 前面的代码保持不变 ...
-
 fn main() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_dialog::init()) // 💡 新增：对话框插件
-        .plugin(tauri_plugin_fs::init())     // 💡 新增：文件系统插件
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .manage(PortState {
             should_read: Arc::new(AtomicBool::new(false)),
             serial_writer: Arc::new(Mutex::new(None)),
         })
         .invoke_handler(tauri::generate_handler![
-            get_available_ports, connect_port, disconnect_port, send_data
+            get_available_ports, connect_port, disconnect_port, send_data, set_dtr_rts // 💡 注册新命令
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
