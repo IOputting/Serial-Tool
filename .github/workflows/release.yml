@@ -31,12 +31,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-          libwebkit2gtk-4.1-dev \
-          libappindicator3-dev \
-          librsvg2-dev \
-          patchelf \
-          libudev-dev \
-          pkg-config
+            pkg-config \
+            libudev-dev \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
 
       # 安装前端依赖（根据你的包管理器调整：npm/yarn/pnpm）
       - name: install frontend dependencies
