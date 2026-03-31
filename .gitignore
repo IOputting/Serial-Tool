@@ -1,0 +1,40 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# 前端依赖
+node_modules/
+
+# 前端构建产物 (根据你使用的前端框架，可能是 dist/, build/, out/ 等)
+dist/
+build/
+
+# 环境变量文件 (保护敏感信息)
+.env
+.env.local
+
+# 系统日志和缓存
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
