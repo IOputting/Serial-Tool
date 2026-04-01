@@ -46,10 +46,7 @@ function App() {
   const logEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // 历史与智能补全
-  const [cmdHistory, setCmdHistory] = useState<string[]>([]);
-  const [historyIdx, setHistoryIdx] = useState<number>(-1);
-  const draftRef = useRef(""); 
+  // 智能补全
   const [suggestions, setSuggestions] = useState<QuickCommand[]>([]);
   const [suggestionIdx, setSuggestionIdx] = useState(0);
   const suggestionsListRef = useRef<HTMLDivElement>(null);
@@ -165,8 +162,6 @@ function App() {
   const handleSend = async () => {
     const success = await executeSend(sendText, isHexSend, appendCrlf);
     if (success) {
-      if (sendText.trim()) setCmdHistory(prev => prev[prev.length - 1] === sendText ? prev : [...prev, sendText]);
-      setHistoryIdx(-1); draftRef.current = "";
       if (clearAfterSend) { setSendText(""); setSuggestions([]); }
       setTimeout(() => textareaRef.current?.focus(), 50);
     }
@@ -481,7 +476,7 @@ function App() {
                     </div>
                     <div style={{ fontSize: "13px", color: "#666", fontFamily: "monospace", wordBreak: "break-all" }}>{cmd.data}</div>
                   </div>
-                  <button onClick={() => setQuickCommands(prev => prev.filter(c => c.id !== cmd.id))} style={{ border: "none", background: "#fff1f0", color: "#ff4d4f", cursor: "pointer", fontSize: "13px", padding: "6px 12px", borderRadius: "4px", border: "1px solid #ffa39e" }}>删除</button>
+                  <button onClick={() => setQuickCommands(prev => prev.filter(c => c.id !== cmd.id))} style={{ background: "#fff1f0", color: "#ff4d4f", cursor: "pointer", fontSize: "13px", padding: "6px 12px", borderRadius: "4px", border: "1px solid #ffa39e" }}>删除</button>
                 </div>
               ))}
             </div>
