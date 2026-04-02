@@ -354,7 +354,7 @@ function App() {
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <span style={{ display: "inline-block", width: "10px", height: "10px", borderRadius: "50%", backgroundColor: isConnected ? "#52c41a" : "#f5222d", boxShadow: isConnected ? "0 0 6px #52c41a" : "none" }}></span>
             <span style={{ fontSize: "15px", fontWeight: "bold", color: "#333" }}>
-              {isConnected ? `数据监控中 (${selectedPort})` : "未连接"}
+              {isConnected ? "已连接" : "未连接"}
             </span>
           </div>
           
