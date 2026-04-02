@@ -1,9 +1,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::fs::File;
+use std::io::{Read, Write};
 use std::sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}};
 use std::time::Duration;
 use std::thread;
-use std::io::Write;
 use tauri::{Emitter, State};
 
 struct PortState {
@@ -36,7 +37,6 @@ fn get_available_ports() -> Vec<PortInfo> {
         .collect()
 }
 
-// 辅助函数：转换数据位
 fn map_data_bits(bits: u8) -> serialport::DataBits {
     match bits {
         5 => serialport::DataBits::Five,
@@ -46,7 +46,6 @@ fn map_data_bits(bits: u8) -> serialport::DataBits {
     }
 }
 
-// 辅助函数：转换校验位
 fn map_parity(parity: &str) -> serialport::Parity {
     match parity {
         "Odd" => serialport::Parity::Odd,
@@ -55,7 +54,6 @@ fn map_parity(parity: &str) -> serialport::Parity {
     }
 }
 
-// 辅助函数：转换停止位
 fn map_stop_bits(bits: u8) -> serialport::StopBits {
     match bits {
         2 => serialport::StopBits::Two,
@@ -87,7 +85,6 @@ fn connect_port(
 
     match port {
         Ok(mut serial) => {
-            // 初始化 DTR 和 RTS 状态 (部分设备可能不支持，忽略错误)
             let _ = serial.write_data_terminal_ready(dtr);
             let _ = serial.write_request_to_send(rts);
 
@@ -121,7 +118,6 @@ fn connect_port(
     }
 }
 
-// 💡 新增：动态修改 DTR 和 RTS
 #[tauri::command]
 fn set_dtr_rts(state: State<'_, PortState>, dtr: bool, rts: bool) -> Result<(), String> {
     let mut writer_guard = state.serial_writer.lock().unwrap();
@@ -168,6 +164,58 @@ fn send_data(state: State<'_, PortState>, data: String, is_hex: bool) -> Result<
     }
 }
 
+// 💡 新增：异步分块发送文件功能
+#[tauri::command]
+fn send_file(app_handle: tauri::AppHandle, state: State<'_, PortState>, file_path: String) -> Result<(), String> {
+    let writer_opt = {
+        let mut guard = state.serial_writer.lock().unwrap();
+        if let Some(writer) = guard.as_mut() {
+            writer.try_clone().ok()
+        } else {
+            None
+        }
+    };
+
+    if let Some(mut writer) = writer_opt {
+        // 新开线程发送文件，防止阻塞主进程
+        thread::spawn(move || {
+            let mut file = match File::open(&file_path) {
+                Ok(f) => f,
+                Err(e) => {
+                    let _ = app_handle.emit("sys-log", format!("无法打开文件: {}", e));
+                    return;
+                }
+            };
+
+            let mut buffer = [0; 1024]; // 每次发送 1KB
+            let _ = app_handle.emit("sys-log", format!("开始发送文件: {} 📁", file_path));
+
+            loop {
+                match file.read(&mut buffer) {
+                    Ok(0) => {
+                        let _ = app_handle.emit("sys-log", "文件发送完成 ✅".to_string());
+                        break;
+                    }
+                    Ok(n) => {
+                        if let Err(e) = writer.write_all(&buffer[..n]) {
+                            let _ = app_handle.emit("sys-log", format!("文件发送中断: {}", e));
+                            break;
+                        }
+                        let _ = writer.flush();
+                    }
+                    Err(e) => {
+                        let _ = app_handle.emit("sys-log", format!("读取文件错误: {}", e));
+                        break;
+                    }
+                }
+            }
+        });
+        Ok(())
+    } else {
+        Err("串口未连接".to_string())
+    }
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -177,7 +225,7 @@ fn main() {
             serial_writer: Arc::new(Mutex::new(None)),
         })
         .invoke_handler(tauri::generate_handler![
-            get_available_ports, connect_port, disconnect_port, send_data, set_dtr_rts // 💡 注册新命令
+            get_available_ports, connect_port, disconnect_port, send_data, set_dtr_rts, send_file // 💡 注册 send_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
