@@ -281,21 +281,21 @@ function App() {
     <div style={{ display: "flex", position: "absolute", inset: 0, backgroundColor: "#f0f2f5", fontFamily: "sans-serif", overflow: "hidden" }}>
       
       {/* ===== 左侧分栏 ===== */}
-      <div style={{ width: "250px", minWidth: "250px", display: "flex", flexDirection: "column", backgroundColor: "#fff", borderRight: "1px solid #ddd", zIndex: 10, boxShadow: "2px 0 8px rgba(0,0,0,0.05)" }}>
+      <div style={{ width: "220px", minWidth: "220px", display: "flex", flexDirection: "column", backgroundColor: "#fff", borderRight: "1px solid #ddd", zIndex: 10, boxShadow: "2px 0 8px rgba(0,0,0,0.05)" }}>
         {/* 串口配置面板 */}
         <div style={{ padding: "15px", borderBottom: "1px solid #eee" }}>
           <h2 style={{ margin: "0 0 15px 0", fontSize: "18px", color: "#333", display: "flex", alignItems: "center", gap: "8px" }}>🔧 串口设置</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "13px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ color: "#555" }}>端口</span>
-              <select value={selectedPort} onChange={(e) => setSelectedPort(e.target.value)} onMouseEnter={fetchPorts} onFocus={fetchPorts} disabled={isConnected} style={{ width: "140px", padding: "4px", borderRadius: "4px", border: "1px solid #ccc", cursor: "pointer" }}>
+              <select value={selectedPort} onChange={(e) => setSelectedPort(e.target.value)} onMouseEnter={fetchPorts} onFocus={fetchPorts} disabled={isConnected} style={{ width: "120px", padding: "4px", borderRadius: "4px", border: "1px solid #ccc", cursor: "pointer" }}>
                 {ports.length === 0 && <option value="">无设备</option>}
                 {ports.map((p) => <option key={p.name} value={p.name} title={p.desc}>{p.desc}</option>)}
               </select>
             </div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ color: "#555" }}>波特率</span>
-              <div onDoubleClick={() => !isConnected && setIsCustomBaud(true)} title="双击可手动输入" style={{ width: "140px" }}>
+              <div onDoubleClick={() => !isConnected && setIsCustomBaud(true)} title="双击可手动输入" style={{ width: "120px" }}>
                 {isCustomBaud ? (
                   <input type="number" value={baudRate} onChange={(e) => setBaudRate(e.target.value)} onBlur={() => setIsCustomBaud(false)} autoFocus disabled={isConnected} style={{ width: "100%", padding: "4px", borderRadius: "4px", border: "1px solid #1890ff", boxSizing: "border-box", outline: "none" }} />
                 ) : (
@@ -308,15 +308,15 @@ function App() {
             </div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ color: "#555" }}>数据位</span>
-              <select value={dataBits} onChange={(e) => setDataBits(e.target.value)} disabled={isConnected} style={{ width: "140px", padding: "4px", borderRadius: "4px", border: "1px solid #ccc" }}><option value="8">8</option><option value="7">7</option><option value="6">6</option><option value="5">5</option></select>
+              <select value={dataBits} onChange={(e) => setDataBits(e.target.value)} disabled={isConnected} style={{ width: "120px", padding: "4px", borderRadius: "4px", border: "1px solid #ccc" }}><option value="8">8</option><option value="7">7</option><option value="6">6</option><option value="5">5</option></select>
             </div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ color: "#555" }}>校验位</span>
-              <select value={parity} onChange={(e) => setParity(e.target.value)} disabled={isConnected} style={{ width: "140px", padding: "4px", borderRadius: "4px", border: "1px solid #ccc" }}><option value="None">None</option><option value="Odd">Odd</option><option value="Even">Even</option></select>
+              <select value={parity} onChange={(e) => setParity(e.target.value)} disabled={isConnected} style={{ width: "120px", padding: "4px", borderRadius: "4px", border: "1px solid #ccc" }}><option value="None">None</option><option value="Odd">Odd</option><option value="Even">Even</option></select>
             </div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ color: "#555" }}>停止位</span>
-              <select value={stopBits} onChange={(e) => setStopBits(e.target.value)} disabled={isConnected} style={{ width: "140px", padding: "4px", borderRadius: "4px", border: "1px solid #ccc" }}><option value="1">1</option><option value="2">2</option></select>
+              <select value={stopBits} onChange={(e) => setStopBits(e.target.value)} disabled={isConnected} style={{ width: "120px", padding: "4px", borderRadius: "4px", border: "1px solid #ccc" }}><option value="1">1</option><option value="2">2</option></select>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", marginTop: "5px" }}>
               <label style={{ display: "flex", alignItems: "center", gap: "5px", cursor: "pointer" }}><input type="checkbox" checked={dtr} onChange={(e) => handleDtrChange(e.target.checked)} /> DTR</label>
@@ -331,7 +331,7 @@ function App() {
         {/* 快捷执行面板 */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", backgroundColor: "#fafafa" }}>
           <div style={{ padding: "12px 15px", borderBottom: "1px solid #eee", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontWeight: "bold", color: "#333", fontSize: "14px" }}>🚀 快捷发送</span>
+            <span style={{ fontWeight: "bold", color: "#333", fontSize: "14px" }}>🚀 快捷指令</span>
             <button onClick={() => setShowCmdModal(true)} style={{ cursor: "pointer", background: "none", border: "1px solid #d9d9d9", borderRadius: "4px", padding: "4px 8px", fontSize: "12px", backgroundColor: "#fff" }}>⚙️ 设置</button>
           </div>
           <div style={{ flex: 1, overflowY: "auto", padding: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -505,7 +505,7 @@ function App() {
               <div style={{ fontSize: "14px", fontWeight: "bold", color: "#555" }}>➕ 添加新指令</div>
               <div style={{ display: "flex", gap: "10px" }}>
                 <input type="text" value={newCmdName} onChange={(e) => setNewCmdName(e.target.value)} placeholder="指令名称 (如: 重启)" style={{ flex: 1, padding: "8px", border: "1px solid #ccc", borderRadius: "4px", fontSize: "13px" }} />
-                <label style={{ display: "flex", alignItems: "center", gap: "5px", color: newCmdIsHex ? "#e91e63" : "#666", fontSize: "13px", cursor: "pointer" }}><input type="checkbox" checked={newCmdIsHex} onChange={(e) => setNewCmdIsHex(e.target.checked)} />使用 HEX</label>
+                <label style={{ display: "flex", alignItems: "center", gap: "5px", color: newCmdIsHex ? "#e91e63" : "#666", fontSize: "13px", cursor: "pointer" }}><input type="checkbox" checked={newCmdIsHex} onChange={(e) => setNewCmdIsHex(e.target.checked)} />HEX格式</label>
               </div>
               <div style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}>
                 <textarea value={newCmdData} onChange={(e) => setNewCmdData(e.target.value)} placeholder="指令内容..." style={{ flex: 1, padding: "8px", border: "1px solid #ccc", borderRadius: "4px", fontSize: "13px", resize: "none", height: "40px", fontFamily: "monospace" }} />
