@@ -3,16 +3,22 @@ name: Release
 on:
   push:
     tags:
-      - 'v*' # 当你推送以 'v' 开头的 tag 时触发（例如 v1.0.0）
+      - 'v*' # 推送 v1.0.0 等标签时触发
+
+# 并发策略：如果同一个 tag 触发了多次，自动取消之前的构建
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   release:
     permissions:
-      contents: write # 允许创建 Release 和上传文件
+      contents: write # 必须：允许创建 Release 和上传附件
     strategy:
-      fail-fast: false # 即使 Linux 失败了，Windows 和 Mac 也会继续打包完，不会全部中止
+      fail-fast: false # 即使某个系统构建失败，其他系统也会继续完成
       matrix:
-        platform: [macos-latest, ubuntu-22.04, windows-latest]
+        # 优化：使用 ubuntu-24.04，macOS-latest 在 2026 年通常指代 M2/M3 芯片环境
+        platform: [macos-latest, ubuntu-24.04, windows-latest]
 
     runs-on: ${{ matrix.platform }}
 
@@ -20,26 +26,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 1. 配置 Node 环境并开启缓存
+      # 1. 配置 Node.js 环境（启用 npm 缓存）
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
-          cache: 'npm' # 开启 npm 缓存，加快依赖安装速度
+          cache: 'npm'
 
-      # 2. 配置 Rust 环境
+      # 2. 配置 Rust 环境（启用 Rust 缓存）
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
+        with:
+          # 增加编译目标支持（如果是 Mac 则自动处理 aarch64）
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
-      # 3. 开启 Rust 编译缓存 (极大地加快后续发版速度)
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
 
-      # 4. Linux 专属系统依赖 (包含 Tauri 核心框架和串口底层驱动 libudev)
+      # 3. Linux 专属依赖环境（针对 Ubuntu 24.04 优化）
       - name: Install dependencies (Ubuntu only)
-        if: matrix.platform == 'ubuntu-22.04'
+        if: startsWith(matrix.platform, 'ubuntu')
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -50,18 +58,28 @@ jobs:
             librsvg2-dev \
             patchelf
 
-      # 5. 安装前端依赖
+      # 4. 安装前端依赖
       - name: Install frontend dependencies
         run: npm install
 
-      # 6. 使用 Tauri 官方 Action 编译并发布到 Releases
+      # 5. Tauri 官方构建 Action
       - name: Build and release Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }} # 自动获取当前触发的 tag
-          releaseName: 'Serial Tool ${{ github.ref_name }}' # 加上引号防止语法错误
-          releaseBody: '自动编译发布的版本。请在下方下载对应系统的安装包。'
+          # 自动使用触发构建的 Tag 名称
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Serial Tool ${{ github.ref_name }}'
+          releaseBody: |
+            ## 🚀 自动编译发布
+            - 版本: ${{ github.ref_name }}
+            - 日期: ${{ github.event.head_commit.timestamp }}
+            - 提交信息: ${{ github.event.head_commit.message }}
+            
+            请在下方根据你的操作系统下载对应的安装包：
+            - Windows: `.msi` 或 `.exe`
+            - macOS: `.dmg` 或 `.app`
+            - Linux: `.deb` 或 `AppImage`
           releaseDraft: false
           prerelease: false
