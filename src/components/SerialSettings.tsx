@@ -119,6 +119,7 @@ export default function SerialSettings() {
             <option value="basic">📝 基础通讯</option>
             <option value="oscilloscope">📈 高级示波器</option>
             <option value="script">💻 编程发送</option>
+            <option value="GNSSviewer">🛰️ GNSS可视化工具</option>
           </select>
         </div>
 

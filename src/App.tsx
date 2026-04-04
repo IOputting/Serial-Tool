@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useSerialStore, getTimestamp, LogEntry } from "./stores/useSerialStore";
 import SerialSettings from "./components/SerialSettings";
 import BasicView from "./views/BasicView";
+import GNSSviewer from "./views/GNSSviewer";
 import "./App.css";
 
 function App() {
@@ -97,6 +98,7 @@ function App() {
             <h1 style={{fontSize: "36px", marginBottom: "10px"}}>💻 编程发送开发中...</h1>
           </div>
         )}
+        {activeView === 'GNSSviewer' && <GNSSviewer />}
       </div>
     </div>
   );

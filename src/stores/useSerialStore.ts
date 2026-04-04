@@ -12,7 +12,7 @@ export interface LogEntry {
   isContinuous?: boolean; // 💡 控制是否隐藏时间戳
 }
 export interface QuickCommand { id: string; name: string; data: string; isHex: boolean; }
-export type ViewMode = 'basic' | 'oscilloscope' | 'script';
+export type ViewMode = 'basic' | 'oscilloscope' | 'script' | 'GNSSviewer';
 
 export const getTimestamp = () => {
   const now = new Date();
