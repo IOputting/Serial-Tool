@@ -1,7 +1,7 @@
 # 🔌 Serial Port Tool
 
 一个基于 **Tauri + React + Rust** 的串口调试工具。  
-由 Gemini Pro 辅助开发（初次尝试项目，欢迎建议 🙌）
+由 Gemini Pro 辅助开发（初次尝试项目，欢迎找茬🐧）
 
 ## ✨ 功能特性
 
