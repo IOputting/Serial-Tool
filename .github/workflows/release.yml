@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*' # 推送 v1.0.0 等标签时触发
 
+# 【新增】：全局环境变量，强制要求所有 JavaScript Action 使用 Node.js 24 运行，消除 Node.js 20 弃用警告
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 # 并发策略：如果同一个 tag 触发了多次，自动取消之前的构建
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
