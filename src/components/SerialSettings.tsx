@@ -53,7 +53,15 @@ export default function SerialSettings() {
 
   useEffect(() => { fetchPorts(); }, []);
 
-  const addSysLog = (msg: string) => addLog({ id: crypto.randomUUID(), type: 'sys', text: msg + '\n', time: getTimestamp(), isHex: false });
+  // 修复点：在 addLog 中添加了 timestampMs 属性
+  const addSysLog = (msg: string) => addLog({ 
+    id: crypto.randomUUID(), 
+    type: 'sys', 
+    text: msg + '\n', 
+    time: getTimestamp(), 
+    isHex: false,
+    timestampMs: Date.now() // 补全此必填字段
+  });
 
   const toggleConnection = async () => {
     if (isConnected) {
@@ -101,7 +109,7 @@ export default function SerialSettings() {
       {/* 串口配置面板 */}
       <div style={{ padding: "15px", borderBottom: "1px solid #eee" }}>
         
-        {/* 核心改动：视图切换下拉框 */}
+        {/* 视图切换下拉框 */}
         <div style={{ marginBottom: "15px", display: "flex", alignItems: "center", gap: "8px" }}>
           <select 
             value={activeView} 
