@@ -36,6 +36,9 @@ interface SerialState {
   executeSend: (data: string, isHex: boolean, useCrlf: boolean) => Promise<boolean>;
 }
 
+// 定义安全上限常量
+const MAX_LOG_LIMIT = 100000;
+
 export const useSerialStore = create<SerialState>((set, get) => ({
   activeView: 'basic',
   setActiveView: (view) => set({ activeView: view }),
@@ -46,20 +49,27 @@ export const useSerialStore = create<SerialState>((set, get) => ({
   addLog: (log) => set((state) => {
     const newLogs = [...state.logs];
     const lastLog = newLogs.length > 0 ? newLogs[newLogs.length - 1] : null;
+    
     // 判断是否连续 (同类型，且相差不到 2000 毫秒)
     if (lastLog && log.type === lastLog.type && log.type !== 'sys' && (log.timestampMs - lastLog.timestampMs < 2000)) {
       log.isContinuous = true;
     } else {
       log.isContinuous = false;
     }
+    
     newLogs.push(log);
-    if (newLogs.length > 3000) return { logs: newLogs.slice(newLogs.length - 3000) };
+    
+    // 💡 10万条极高安全兜底上限
+    if (newLogs.length > MAX_LOG_LIMIT) {
+      return { logs: newLogs.slice(newLogs.length - MAX_LOG_LIMIT) };
+    }
     return { logs: newLogs };
   }),
 
   addLogsBatch: (entries) => set((state) => {
     const newLogs = [...state.logs];
     let lastLog = newLogs.length > 0 ? newLogs[newLogs.length - 1] : null;
+    
     entries.forEach(log => {
       if (lastLog && log.type === lastLog.type && log.type !== 'sys' && (log.timestampMs - lastLog.timestampMs < 2000)) {
         log.isContinuous = true;
@@ -69,7 +79,11 @@ export const useSerialStore = create<SerialState>((set, get) => ({
       newLogs.push(log);
       lastLog = log;
     });
-    if (newLogs.length > 3000) return { logs: newLogs.slice(newLogs.length - 3000) };
+    
+    // 💡 10万条极高安全兜底上限
+    if (newLogs.length > MAX_LOG_LIMIT) {
+      return { logs: newLogs.slice(newLogs.length - MAX_LOG_LIMIT) };
+    }
     return { logs: newLogs };
   }),
 
@@ -81,8 +95,10 @@ export const useSerialStore = create<SerialState>((set, get) => ({
     const state = get();
     if (!state.isConnected) { alert("请先连接串口！"); return false; }
     if (!data) return false;
+    
     let dataToSend = data;
     if (!isHex && useCrlf) dataToSend += "\r\n"; 
+    
     try {
       await invoke("send_data", { data: dataToSend, isHex: isHex });
       state.addLog({ 

@@ -36,7 +36,9 @@ const sysColors: Record<string, string> = {
 
 export default function GNSSviewer() {
   const logs = useSerialStore((state) => state.logs);
-  const lastParsedIndex = useRef(0);
+  
+  // 💡 修复：使用 ID 而不是 Index 来追踪解析进度
+  const lastParsedId = useRef<string | null>(null);
 
   // --- 状态 ---
   const [position, setPosition] = useState<PositionData>({
@@ -48,10 +50,35 @@ export default function GNSSviewer() {
 
   // --- NMEA 解析逻辑 ---
   useEffect(() => {
-    if (logs.length <= lastParsedIndex.current) return;
+    // 💡 修复：处理日志为空或被清空的情况
+    if (logs.length === 0) {
+      lastParsedId.current = null;
+      return;
+    }
 
-    const newLogs = logs.slice(lastParsedIndex.current);
-    lastParsedIndex.current = logs.length;
+    let newLogs = [];
+
+    // 💡 修复：通过 ID 查找新日志的切片位置
+    if (!lastParsedId.current) {
+      // 第一次渲染，解析所有现存日志
+      newLogs = logs;
+    } else {
+      const lastIdx = logs.findIndex(l => l.id === lastParsedId.current);
+      
+      if (lastIdx !== -1) {
+        // 找到了上次解析的位置，提取它之后的所有新日志
+        newLogs = logs.slice(lastIdx + 1);
+      } else {
+        // 没找到！说明上次解析的日志已经被 3000 条的限制给“挤出”缓冲区了。
+        // 重新解析当前的整个缓冲区以防状态断层
+        newLogs = logs; 
+      }
+    }
+
+    if (newLogs.length === 0) return;
+
+    // 💡 修复：记住这批日志最后一条的 ID，供下次比对
+    lastParsedId.current = newLogs[newLogs.length - 1].id;
 
     let updatedPos = { ...position };
     let satMapUpdated = false;
@@ -68,14 +95,13 @@ export default function GNSSviewer() {
         const talker = parts[0].slice(1, 3);
         const type = parts[0].slice(3);
 
-        // 1. 解析 GGA (获取位置、海拔、时间、HDOP、卫星数)
+        // 1. 解析 GGA
         if (type === 'GGA' && parts.length > 14) {
           const fixQuality = parseInt(parts[6]) || 0;
           updatedPos.fix = fixQuality > 0;
           updatedPos.satCount = parseInt(parts[7]) || 0;
-          updatedPos.hdop = parts[8] || updatedPos.hdop; // 提取 HDOP
+          updatedPos.hdop = parts[8] || updatedPos.hdop; 
 
-          // 提取时间 (hhmmss.ss)
           const timeRaw = parts[1];
           if (timeRaw && timeRaw.length >= 6) {
             updatedPos.time = `${timeRaw.slice(0, 2)}:${timeRaw.slice(2, 4)}:${timeRaw.slice(4, 6)}`;
@@ -96,29 +122,25 @@ export default function GNSSviewer() {
           }
         }
 
-        // 2. 解析 RMC (获取日期、速度、航向。RMC是推荐定位信息的缩写)
+        // 2. 解析 RMC
         if (type === 'RMC' && parts.length > 12) {
-          const status = parts[2]; // A = 激活/有效, V = 无效
+          const status = parts[2]; 
           
-          // 即使未定位(V)，有时模块也会吐出 RTC 时间
           const timeRaw = parts[1];
           if (timeRaw && timeRaw.length >= 6) {
              updatedPos.time = `${timeRaw.slice(0, 2)}:${timeRaw.slice(2, 4)}:${timeRaw.slice(4, 6)}`;
           }
-          const dateRaw = parts[9]; // ddmmyy
+          const dateRaw = parts[9]; 
           if (dateRaw && dateRaw.length === 6) {
              updatedPos.date = `20${dateRaw.slice(4, 6)}-${dateRaw.slice(2, 4)}-${dateRaw.slice(0, 2)}`;
           }
 
-          // 仅在定位有效时更新速度和航向
           if (status === 'A') {
             updatedPos.fix = true;
-            // 提取速度: 原始单位是“节(knots)”，1节 ≈ 1.852 km/h
             const speedKnots = parseFloat(parts[7]);
             if (!isNaN(speedKnots)) {
               updatedPos.speed = (speedKnots * 1.852).toFixed(1);
             }
-            // 提取航向: 度
             const courseDeg = parseFloat(parts[8]);
             if (!isNaN(courseDeg)) {
               updatedPos.course = courseDeg.toFixed(1);
@@ -126,7 +148,7 @@ export default function GNSSviewer() {
           }
         }
 
-        // 3. 解析 GSV (获取可视卫星，包含轨迹更新)
+        // 3. 解析 GSV
         if (type === 'GSV' && parts.length >= 8) {
           for (let i = 4; i < parts.length - 3; i += 4) {
             const prn = parts[i];
@@ -157,10 +179,12 @@ export default function GNSSviewer() {
       }
     });
 
+    // 每次有效更新直接触发 React setState
     setPosition(updatedPos);
     if (satMapUpdated) {
       setSatellites(new Map(satellites));
     }
+    
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [logs]);
 
@@ -169,7 +193,7 @@ export default function GNSSviewer() {
   return (
     <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "20px", height: "100%", boxSizing: "border-box", overflowY: "auto" }}>
       
-      {/* 顶部仪表盘：采用了自适应网格(auto-fit)，数据多时会自动换行 */}
+      {/* 顶部仪表盘 */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "15px" }}>
         <StatCard title="状态 (Status)" value={position.fix ? "3D 定位" : "未定位"} color={position.fix ? "#22c55e" : "#ef4444"} />
         <StatCard title="UTC 日期" value={position.date || "---"} />
@@ -185,7 +209,7 @@ export default function GNSSviewer() {
 
       <div style={{ display: "flex", gap: "20px", flex: 1, minHeight: "400px" }}>
         
-        {/* 左侧：天空图 (Skyplot) 包含轨迹 */}
+        {/* 左侧：天空图 (Skyplot) */}
         <div style={{ flex: 1, backgroundColor: "#fff", borderRadius: "10px", padding: "20px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <h3 style={{ margin: "0 0 20px 0", color: "#333" }}>🛰️ 卫星天空图</h3>
           <Skyplot satellites={satArray} />
